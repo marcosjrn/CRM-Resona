@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-resona-bg-1: #0B0B0F;
+  --color-resona-bg-2: #131018;
+  --color-resona-text: #D8D8DE;
+  --color-resona-border: #2A2A2F;
+  --color-resona-purple-dark: #3F1E6A;
+  --color-resona-purple-mid: #5B349C;
+  --color-resona-purple-light: #8151D1;
+  --color-resona-glow: #D0C8E3;
+}
+
+body {
+  background-color: var(--color-resona-bg-1);
+  color: var(--color-resona-text);
+  font-family: var(--font-sans);
+}
+
+@layer utilities {
+  .resona-card {
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(129, 81, 209, 0.25);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .resona-btn {
+    background: linear-gradient(to right, var(--color-resona-purple-dark), var(--color-resona-purple-light));
+    color: #FFFFFF;
+    transition: all 0.2s ease;
+    border: none;
+  }
+  
+  .resona-btn:hover {
+    box-shadow: 0 0 15px rgba(129, 81, 209, 0.4);
+    filter: brightness(1.1);
+  }
+  
+  .resona-input {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #FFFFFF;
+    transition: all 0.2s ease;
+  }
+  
+  .resona-input:focus {
+    outline: none;
+    border-color: var(--color-resona-purple-light);
+    box-shadow: 0 0 10px rgba(129, 81, 209, 0.2);
+  }
+  
+  .resona-separator {
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(129, 81, 209, 0.5);
+}
