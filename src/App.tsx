@@ -11,6 +11,7 @@ import Pipeline from './pages/Pipeline';
 import Finance from './pages/Finance';
 import Login from './pages/Login';
 import Users from './pages/Users';
+import Dashboard from './pages/Dashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
 
@@ -32,6 +33,7 @@ export default function App() {
             <Route path="accounts" element={<Accounts />} />
             <Route path="pipeline" element={<Pipeline />} />
             <Route path="finance" element={<Finance />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<Users />} />
           </Route>
         </Routes>

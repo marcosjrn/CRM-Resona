@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Trash2, X, Check, GripVertical, Search, ExternalLink, RefreshCw } from 'lucide-react';
+import { Plus, Calendar, Trash2, X, Check, GripVertical, Search, ExternalLink, RefreshCw, History, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
@@ -51,6 +51,9 @@ export default function Pipeline() {
   const [pendingLossDeal, setPendingLossDeal] = useState<{ deal: Deal; targetStage: string } | null>(null);
   const [lossReason, setLossReason] = useState('Preço');
   const [lossNotes, setLossNotes] = useState('');
+
+  // Stage history
+  const [stageHistory, setStageHistory] = useState<{ id: string; from_stage: string | null; to_stage: string; changed_at: string }[]>([]);
 
   const saveStages = async (newStages: string[]) => {
     setStages(newStages);
@@ -130,6 +133,7 @@ export default function Pipeline() {
       setIsModalOpen(false);
       setEditingDeal(null);
       setConfirmDelete(false);
+      setStageHistory([]);
       fetchData();
     } catch {
       toast('Erro ao salvar deal', 'error');
@@ -460,7 +464,12 @@ export default function Pipeline() {
                         draggable
                         onDragStart={(e) => onCardDragStart(e, deal.id)}
                         onDragEnd={() => { setDraggedDealId(null); setDragOverStage(null); }}
-                        onClick={() => { if (!draggedDealId) { setEditingDeal(deal); setConfirmDelete(false); setIsModalOpen(true); } }}
+                        onClick={() => {
+          if (!draggedDealId) {
+            setEditingDeal(deal); setConfirmDelete(false); setStageHistory([]); setIsModalOpen(true);
+            apiFetch(`/api/deals/${deal.id}/history`).then(r => r.json()).then(setStageHistory).catch(() => {});
+          }
+        }}
                         className={clsx(
                           'resona-card p-4 hover:border-[#8151D1]/50 transition-all cursor-grab active:cursor-grabbing group select-none',
                           draggedDealId === deal.id && 'opacity-40 scale-95'
@@ -641,7 +650,7 @@ export default function Pipeline() {
       {/* Deal Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[#0B0B0F]/90" onClick={() => { setIsModalOpen(false); setConfirmDelete(false); }}></div>
+          <div className="absolute inset-0 bg-[#0B0B0F]/90" onClick={() => { setIsModalOpen(false); setConfirmDelete(false); setStageHistory([]); }}></div>
           <div className="relative z-10 bg-[#131018] border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg overflow-y-auto max-h-[90vh]">
             <form onSubmit={handleSave}>
               <div className="px-6 pt-6 pb-6">
@@ -682,6 +691,32 @@ export default function Pipeline() {
                     />
                   </div>
                 </div>
+
+                {/* Stage History */}
+                {editingDeal && stageHistory.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-white/5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <History className="h-3.5 w-3.5 text-[#8151D1]" />
+                      <p className="text-xs font-bold text-[#D8D8DE]/50 uppercase tracking-wider">Histórico de Estágios</p>
+                    </div>
+                    <div className="space-y-2">
+                      {stageHistory.map(h => (
+                        <div key={h.id} className="flex items-center gap-2 text-xs text-[#D8D8DE]/60">
+                          <span className="text-[10px] text-[#D8D8DE]/30 font-mono flex-shrink-0">
+                            {format(new Date(h.changed_at), 'dd/MM HH:mm')}
+                          </span>
+                          {h.from_stage && (
+                            <>
+                              <span className="px-1.5 py-0.5 bg-white/5 rounded text-[10px] font-bold truncate max-w-[80px]">{h.from_stage}</span>
+                              <ArrowRight className="h-3 w-3 text-[#8151D1] flex-shrink-0" />
+                            </>
+                          )}
+                          <span className="px-1.5 py-0.5 bg-[#8151D1]/15 border border-[#8151D1]/20 rounded text-[10px] font-bold text-[#D0C8E3] truncate max-w-[80px]">{h.to_stage}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="bg-white/[0.02] px-6 py-4 flex items-center justify-between border-t border-white/5">
                 {editingDeal && (

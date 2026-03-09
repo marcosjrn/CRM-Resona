@@ -1,12 +1,39 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Trello, DollarSign, LogOut, UserCog } from 'lucide-react';
+import { LayoutDashboard, Users, Trello, DollarSign, LogOut, UserCog, BarChart2, Bell, AlertCircle, Calendar, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useState, useEffect, useRef } from 'react';
+import { format } from 'date-fns';
 import { apiFetch, clearToken, clearCurrentUser, getCurrentUser } from '../utils/api';
+
+const fmt = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+
+interface Notifications {
+  overdueInvoices: { id: string; company_name: string; amount: number; due_date: string }[];
+  dueSoonInvoices: { id: string; company_name: string; amount: number; due_date: string }[];
+  overdueActions: { id: string; company_name: string; next_action: string; next_action_date: string }[];
+}
 
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifs, setNotifs] = useState<Notifications>({ overdueInvoices: [], dueSoonInvoices: [], overdueActions: [] });
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    apiFetch('/api/notifications').then(r => r.json()).then(setNotifs).catch(() => {});
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const totalNotifs = notifs.overdueInvoices.length + notifs.overdueActions.length;
 
   const handleLogout = async () => {
     await apiFetch('/api/auth/logout', { method: 'POST' });
@@ -17,6 +44,7 @@ export default function Layout() {
 
   const navItems = [
     { name: 'Hoje', path: '/', icon: LayoutDashboard },
+    { name: 'Dashboard', path: '/dashboard', icon: BarChart2 },
     { name: 'Empresas', path: '/accounts', icon: Users },
     { name: 'Pipeline', path: '/pipeline', icon: Trello },
     { name: 'Financeiro', path: '/finance', icon: DollarSign },
@@ -30,7 +58,7 @@ export default function Layout() {
     <div className="flex h-screen bg-[#0B0B0F] text-[#D8D8DE] font-sans relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[#8151D1] opacity-[0.07] blur-[120px] rounded-full pointer-events-none transform translate-x-1/3 -translate-y-1/3"></div>
-      
+
       {/* Chevron Background Element */}
       <div className="absolute top-0 right-0 w-full h-full pointer-events-none overflow-hidden opacity-[0.15] z-0">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute w-[150%] h-[150%] top-[-25%] right-[-25%] text-[#3F1E6A]">
@@ -46,11 +74,98 @@ export default function Layout() {
 
       {/* Sidebar */}
       <aside className="w-64 bg-[#131018] border-r border-white/5 flex flex-col z-10 relative shadow-2xl">
-        <div className="p-6">
-          <h1 className="text-2xl font-extrabold tracking-tight text-white">Resona <span className="text-[#8151D1]">IA</span></h1>
-          <p className="text-[10px] text-[#D8D8DE]/60 font-semibold mt-1 uppercase tracking-widest">CRM Operacional</p>
+        <div className="p-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white">Resona <span className="text-[#8151D1]">IA</span></h1>
+            <p className="text-[10px] text-[#D8D8DE]/60 font-semibold mt-1 uppercase tracking-widest">CRM Operacional</p>
+          </div>
+          {/* Bell Notification */}
+          <div ref={notifRef} className="relative mt-1">
+            <button
+              onClick={() => setNotifOpen(v => !v)}
+              className={clsx(
+                'relative p-2 rounded-lg transition-colors',
+                notifOpen ? 'bg-[#8151D1]/20 text-white' : 'text-[#D8D8DE]/50 hover:text-white hover:bg-white/5'
+              )}
+            >
+              <Bell className="h-4 w-4" />
+              {totalNotifs > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1">
+                  {totalNotifs > 9 ? '9+' : totalNotifs}
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-[#1a1520] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Notificações</span>
+                  {totalNotifs > 0 && <span className="text-xs font-bold text-red-400">{totalNotifs} alerta{totalNotifs !== 1 ? 's' : ''}</span>}
+                </div>
+                <div className="max-h-[360px] overflow-y-auto">
+                  {totalNotifs === 0 && notifs.dueSoonInvoices.length === 0 ? (
+                    <p className="text-sm text-[#D8D8DE]/50 text-center py-6">Tudo em dia</p>
+                  ) : (
+                    <>
+                      {notifs.overdueInvoices.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 flex items-center gap-1.5">
+                            <AlertCircle className="h-3 w-3 text-red-400" />
+                            <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Invoices Atrasadas — {notifs.overdueInvoices.length}</span>
+                          </div>
+                          {notifs.overdueInvoices.map(n => (
+                            <Link key={n.id} to="/finance" onClick={() => setNotifOpen(false)} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] border-b border-white/5 transition-colors">
+                              <div>
+                                <p className="text-xs font-bold text-white">{n.company_name}</p>
+                                <p className="text-[11px] text-red-400">{format(new Date(n.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</p>
+                              </div>
+                              <span className="text-xs font-bold text-red-400">{fmt(n.amount)}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      {notifs.overdueActions.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 bg-orange-500/10 border-b border-orange-500/20 flex items-center gap-1.5">
+                            <Zap className="h-3 w-3 text-orange-400" />
+                            <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Ações Atrasadas — {notifs.overdueActions.length}</span>
+                          </div>
+                          {notifs.overdueActions.map(n => (
+                            <Link key={n.id} to="/pipeline" onClick={() => setNotifOpen(false)} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] border-b border-white/5 transition-colors">
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-white">{n.company_name}</p>
+                                <p className="text-[11px] text-[#D8D8DE]/60 truncate">{n.next_action}</p>
+                              </div>
+                              <span className="text-[11px] font-bold text-orange-400 ml-2 flex-shrink-0">{format(new Date(n.next_action_date + 'T12:00:00'), 'dd/MM')}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      {notifs.dueSoonInvoices.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center gap-1.5">
+                            <Calendar className="h-3 w-3 text-yellow-400" />
+                            <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider">Vencendo em 7 dias — {notifs.dueSoonInvoices.length}</span>
+                          </div>
+                          {notifs.dueSoonInvoices.map(n => (
+                            <Link key={n.id} to="/finance" onClick={() => setNotifOpen(false)} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] border-b border-white/5 transition-colors">
+                              <div>
+                                <p className="text-xs font-bold text-white">{n.company_name}</p>
+                                <p className="text-[11px] text-yellow-400">{format(new Date(n.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</p>
+                              </div>
+                              <span className="text-xs font-bold text-yellow-400">{fmt(n.amount)}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        
+
         <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
@@ -95,7 +210,7 @@ export default function Layout() {
             </div>
           )}
         </nav>
-        
+
         <div className="p-4 border-t border-white/5">
           <div className="flex items-center justify-between">
             <div className="flex items-center min-w-0">

@@ -128,6 +128,15 @@ async function initDB() {
       role TEXT NOT NULL DEFAULT 'member',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS deal_stage_history (
+      id TEXT PRIMARY KEY,
+      deal_id TEXT NOT NULL,
+      from_stage TEXT,
+      to_stage TEXT NOT NULL,
+      changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE
+    );
   `);
 
   // Migrations para colunas adicionadas depois do schema inicial
@@ -368,8 +377,22 @@ async function startServer() {
       });
       if (oldDeal && oldDeal.stage !== data.stage) {
         await logActivity(String(oldDeal.account_id), "deal_stage_changed", `Deal moved from ${oldDeal.stage} to ${data.stage}`);
+        await db.execute({
+          sql: "INSERT INTO deal_stage_history (id, deal_id, from_stage, to_stage) VALUES (?, ?, ?, ?)",
+          args: [uuidv4(), id, String(oldDeal.stage), data.stage],
+        });
       }
       res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erro interno" }); }
+  });
+
+  app.get("/api/deals/:id/history", async (req, res) => {
+    try {
+      const result = await db.execute({
+        sql: "SELECT * FROM deal_stage_history WHERE deal_id = ? ORDER BY changed_at ASC",
+        args: [req.params.id],
+      });
+      res.json(toRows(result));
     } catch (e) { res.status(500).json({ error: "Erro interno" }); }
   });
 
@@ -605,6 +628,77 @@ async function startServer() {
       console.error(e);
       res.status(500).json({ error: "Erro interno" });
     }
+  });
+
+  // DASHBOARD ANALYTICS (página Dashboard)
+  app.get("/api/dashboard/analytics", async (_req, res) => {
+    try {
+      const [topClientsRes, clientsByStatusRes, clientsBySegmentRes, overdueByClientRes, revenueByMonthRes, costsMonthRes] = await Promise.all([
+        db.execute("SELECT company_name, mrr, health, segment FROM accounts WHERE type = 'Cliente' AND status = 'Ativo' ORDER BY mrr DESC LIMIT 10"),
+        db.execute("SELECT status, COUNT(*) as count FROM accounts WHERE type = 'Cliente' GROUP BY status"),
+        db.execute("SELECT segment, COUNT(*) as count FROM accounts GROUP BY segment ORDER BY count DESC"),
+        db.execute(`
+          SELECT a.company_name, SUM(i.amount) as total
+          FROM invoices i JOIN accounts a ON i.account_id = a.id
+          WHERE i.paid_date IS NULL AND i.due_date < date('now')
+          GROUP BY a.id ORDER BY total DESC LIMIT 8
+        `),
+        db.execute(`
+          SELECT competence_month, revenue_type, SUM(amount) as total
+          FROM invoices WHERE status = 'Pago'
+          GROUP BY competence_month, revenue_type ORDER BY competence_month
+        `),
+        db.execute("SELECT competence_month, SUM(amount) as total FROM costs GROUP BY competence_month ORDER BY competence_month"),
+      ]);
+
+      // Build revenue by month (last 12 months)
+      const now = new Date();
+      const months12: string[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months12.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      }
+      const revMap: Record<string, { mensalidade: number; implementacao: number }> = {};
+      toRows(revenueByMonthRes).forEach((r: any) => {
+        const m = String(r.competence_month);
+        if (!revMap[m]) revMap[m] = { mensalidade: 0, implementacao: 0 };
+        if (r.revenue_type === "Implementacao") revMap[m].implementacao += Number(r.total);
+        else revMap[m].mensalidade += Number(r.total);
+      });
+      const costMap: Record<string, number> = {};
+      toRows(costsMonthRes).forEach((r: any) => { costMap[String(r.competence_month)] = Number(r.total); });
+
+      res.json({
+        topClients: toRows(topClientsRes).map((r: any) => ({ company_name: String(r.company_name), mrr: Number(r.mrr || 0), health: r.health, segment: r.segment })),
+        clientsByStatus: toRows(clientsByStatusRes).map((r: any) => ({ status: String(r.status || "Sem status"), count: Number(r.count) })),
+        clientsBySegment: toRows(clientsBySegmentRes).map((r: any) => ({ segment: String(r.segment || "Outros"), count: Number(r.count) })),
+        overdueByClient: toRows(overdueByClientRes).map((r: any) => ({ company_name: String(r.company_name), total: Number(r.total) })),
+        revenueByMonth: months12.map(m => ({
+          month: m,
+          mensalidade: revMap[m]?.mensalidade || 0,
+          implementacao: revMap[m]?.implementacao || 0,
+          costs: costMap[m] || 0,
+        })),
+      });
+    } catch (e) { res.status(500).json({ error: "Erro interno" }); }
+  });
+
+  // NOTIFICATIONS (alertas de vencimento para o sino)
+  app.get("/api/notifications", async (_req, res) => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const in7Days = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const [overdueInvoicesRes, dueSoonRes, overdueActionsRes] = await Promise.all([
+        db.execute(`SELECT i.id, a.company_name, i.amount, i.due_date FROM invoices i JOIN accounts a ON i.account_id = a.id WHERE i.paid_date IS NULL AND i.due_date < ? ORDER BY i.due_date ASC`, [today]),
+        db.execute(`SELECT i.id, a.company_name, i.amount, i.due_date FROM invoices i JOIN accounts a ON i.account_id = a.id WHERE i.paid_date IS NULL AND i.due_date >= ? AND i.due_date <= ? ORDER BY i.due_date ASC`, [today, in7Days]),
+        db.execute(`SELECT d.id, a.company_name, d.next_action, d.next_action_date FROM deals d JOIN accounts a ON d.account_id = a.id WHERE d.next_action_date < ? ORDER BY d.next_action_date ASC`, [today]),
+      ]);
+      res.json({
+        overdueInvoices: toRows(overdueInvoicesRes).map((r: any) => ({ ...r, amount: Number(r.amount) })),
+        dueSoonInvoices: toRows(dueSoonRes).map((r: any) => ({ ...r, amount: Number(r.amount) })),
+        overdueActions: toRows(overdueActionsRes),
+      });
+    } catch (e) { res.status(500).json({ error: "Erro interno" }); }
   });
 
 }

@@ -16,6 +16,8 @@ export default function Accounts() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'All' | 'Lead' | 'Cliente'>('All');
+  const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [filterSegment, setFilterSegment] = useState<string | null>(null);
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -75,11 +77,20 @@ export default function Accounts() {
     setIsFormModalOpen(true);
   };
 
+  // Extract all unique tags and segments for the filter cloud
+  const allTags = Array.from(new Set(
+    accounts.flatMap(a => a.tags ? a.tags.split(',').map(t => t.trim()).filter(Boolean) : [])
+  )).sort();
+  const allSegments = Array.from(new Set(accounts.map(a => a.segment).filter(Boolean))).sort();
+
   const filteredAccounts = accounts.filter(acc => {
     const matchesSearch = acc.company_name.toLowerCase().includes(search.toLowerCase()) ||
                           (acc.contact_name && acc.contact_name.toLowerCase().includes(search.toLowerCase()));
     const matchesType = filterType === 'All' || acc.type === filterType;
-    return matchesSearch && matchesType;
+    const accTags = acc.tags ? acc.tags.split(',').map(t => t.trim()) : [];
+    const matchesTag = !filterTag || accTags.includes(filterTag);
+    const matchesSegment = !filterSegment || acc.segment === filterSegment;
+    return matchesSearch && matchesType && matchesTag && matchesSegment;
   });
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -239,39 +250,70 @@ export default function Accounts() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between resona-card p-4">
-        <div className="relative flex-1 max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-[#D8D8DE]/50" />
+      <div className="resona-card p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="relative flex-1 max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-[#D8D8DE]/50" />
+            </div>
+            <input
+              type="text"
+              placeholder="Buscar por empresa ou contato..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="resona-input block w-full pl-11 pr-4 py-2.5 rounded-xl leading-5 sm:text-sm"
+            />
           </div>
-          <input
-            type="text"
-            placeholder="Buscar por empresa ou contato..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="resona-input block w-full pl-11 pr-4 py-2.5 rounded-xl leading-5 sm:text-sm"
-          />
+          <div className="flex items-center space-x-2 bg-white/5 p-1 rounded-xl border border-white/5">
+            {(['All', 'Lead', 'Cliente'] as const).map(t => (
+              <button key={t} onClick={() => setFilterType(t)} className={clsx('px-4 py-2 text-sm font-bold rounded-lg transition-all', filterType === t ? 'bg-[#8151D1] text-white shadow-md' : 'text-[#D8D8DE]/70 hover:text-white')}>
+                {t === 'All' ? 'Todos' : t + 's'}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center space-x-2 bg-white/5 p-1 rounded-xl border border-white/5">
-          <button
-            onClick={() => setFilterType('All')}
-            className={clsx('px-4 py-2 text-sm font-bold rounded-lg transition-all', filterType === 'All' ? 'bg-[#8151D1] text-white shadow-md' : 'text-[#D8D8DE]/70 hover:text-white')}
-          >
-            Todos
-          </button>
-          <button
-            onClick={() => setFilterType('Lead')}
-            className={clsx('px-4 py-2 text-sm font-bold rounded-lg transition-all', filterType === 'Lead' ? 'bg-[#8151D1] text-white shadow-md' : 'text-[#D8D8DE]/70 hover:text-white')}
-          >
-            Leads
-          </button>
-          <button
-            onClick={() => setFilterType('Cliente')}
-            className={clsx('px-4 py-2 text-sm font-bold rounded-lg transition-all', filterType === 'Cliente' ? 'bg-[#8151D1] text-white shadow-md' : 'text-[#D8D8DE]/70 hover:text-white')}
-          >
-            Clientes
-          </button>
-        </div>
+
+        {/* Tags & Segments clickable filter */}
+        {(allTags.length > 0 || allSegments.length > 0) && (
+          <div className="flex flex-wrap gap-2 pt-1 border-t border-white/5">
+            {filterTag || filterSegment ? (
+              <button
+                onClick={() => { setFilterTag(null); setFilterSegment(null); }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+              >
+                <X className="h-3 w-3" /> Limpar filtros
+              </button>
+            ) : null}
+            {allTags.map(tag => (
+              <button
+                key={tag}
+                onClick={() => setFilterTag(filterTag === tag ? null : tag)}
+                className={clsx(
+                  'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors border',
+                  filterTag === tag
+                    ? 'bg-[#8151D1]/30 text-white border-[#8151D1]/50'
+                    : 'text-[#D8D8DE]/60 bg-white/5 border-white/10 hover:bg-[#8151D1]/10 hover:text-[#D0C8E3] hover:border-[#8151D1]/20'
+                )}
+              >
+                <Tag className="h-2.5 w-2.5" />{tag}
+              </button>
+            ))}
+            {allSegments.map(seg => (
+              <button
+                key={seg}
+                onClick={() => setFilterSegment(filterSegment === seg ? null : seg)}
+                className={clsx(
+                  'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors border',
+                  filterSegment === seg
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                    : 'text-[#D8D8DE]/60 bg-white/5 border-white/10 hover:bg-cyan-500/10 hover:text-cyan-300 hover:border-cyan-500/20'
+                )}
+              >
+                <Building2 className="h-2.5 w-2.5" />{seg}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
