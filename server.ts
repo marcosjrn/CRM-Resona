@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import { createClient, type ResultSet } from "@libsql/client";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
@@ -619,8 +618,10 @@ export default app;
 // Inicia servidor localmente (não no Vercel)
 if (!process.env.VERCEL) {
   if (process.env.NODE_ENV !== "production") {
-    // Dev: Vite middleware para HMR
-    createViteServer({ server: { middlewareMode: true }, appType: "spa" }).then((vite) => {
+    // Dev: Vite middleware para HMR (import dinâmico — Vite é devDependency)
+    import("vite").then(({ createServer: createViteServer }) => {
+      return createViteServer({ server: { middlewareMode: true }, appType: "spa" });
+    }).then((vite) => {
       app.use(vite.middlewares);
       app.listen(PORT, "0.0.0.0", () => console.log(`Server running on http://localhost:${PORT}`));
     });
