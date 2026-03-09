@@ -46,6 +46,12 @@ body {
     color: #FFFFFF;
     transition: all 0.2s ease;
   }
+
+  .resona-input option,
+  .resona-input optgroup {
+    background-color: #131018;
+    color: #D8D8DE;
+  }
   
   .resona-input:focus {
     outline: none;

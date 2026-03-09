@@ -1,15 +1,29 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Trello, DollarSign } from 'lucide-react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Users, Trello, DollarSign, LogOut, UserCog } from 'lucide-react';
 import { clsx } from 'clsx';
+import { apiFetch, clearToken, clearCurrentUser, getCurrentUser } from '../utils/api';
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const currentUser = getCurrentUser();
+
+  const handleLogout = async () => {
+    await apiFetch('/api/auth/logout', { method: 'POST' });
+    clearToken();
+    clearCurrentUser();
+    navigate('/login');
+  };
 
   const navItems = [
     { name: 'Hoje', path: '/', icon: LayoutDashboard },
-    { name: 'Accounts', path: '/accounts', icon: Users },
+    { name: 'Empresas', path: '/accounts', icon: Users },
     { name: 'Pipeline', path: '/pipeline', icon: Trello },
     { name: 'Financeiro', path: '/finance', icon: DollarSign },
+  ];
+
+  const adminItems = [
+    { name: 'Usuários', path: '/users', icon: UserCog },
   ];
 
   return (
@@ -37,7 +51,7 @@ export default function Layout() {
           <p className="text-[10px] text-[#D8D8DE]/60 font-semibold mt-1 uppercase tracking-widest">CRM Operacional</p>
         </div>
         
-        <nav className="flex-1 px-4 space-y-2 mt-4">
+        <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
             return (
@@ -46,8 +60,8 @@ export default function Layout() {
                 to={item.path}
                 className={clsx(
                   'flex items-center px-4 py-3 text-sm font-bold rounded-xl transition-all duration-200',
-                  isActive 
-                    ? 'bg-[#8151D1]/15 text-white border border-[#8151D1]/30 shadow-[0_0_15px_rgba(129,81,209,0.1)]' 
+                  isActive
+                    ? 'bg-[#8151D1]/15 text-white border border-[#8151D1]/30 shadow-[0_0_15px_rgba(129,81,209,0.1)]'
                     : 'text-[#D8D8DE]/70 hover:bg-white/5 hover:text-white'
                 )}
               >
@@ -56,17 +70,50 @@ export default function Layout() {
               </Link>
             );
           })}
+
+          {currentUser?.role === 'admin' && (
+            <div className="pt-4 mt-2 border-t border-white/5">
+              <p className="px-4 pb-2 text-[10px] font-bold text-[#D8D8DE]/30 uppercase tracking-widest">Admin</p>
+              {adminItems.map((item) => {
+                const isActive = location.pathname.startsWith(item.path);
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    className={clsx(
+                      'flex items-center px-4 py-3 text-sm font-bold rounded-xl transition-all duration-200',
+                      isActive
+                        ? 'bg-[#8151D1]/15 text-white border border-[#8151D1]/30 shadow-[0_0_15px_rgba(129,81,209,0.1)]'
+                        : 'text-[#D8D8DE]/70 hover:bg-white/5 hover:text-white'
+                    )}
+                  >
+                    <item.icon className={clsx('mr-3 h-5 w-5', isActive ? 'text-[#8151D1]' : 'text-[#D8D8DE]/50')} />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </nav>
         
         <div className="p-4 border-t border-white/5">
-          <div className="flex items-center">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#3F1E6A] to-[#8151D1] flex items-center justify-center text-sm font-bold text-white shadow-[0_0_10px_rgba(129,81,209,0.3)]">
-              EU
+          <div className="flex items-center justify-between">
+            <div className="flex items-center min-w-0">
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#3F1E6A] to-[#8151D1] flex items-center justify-center text-sm font-bold text-white shadow-[0_0_10px_rgba(129,81,209,0.3)] flex-shrink-0">
+                {currentUser?.name?.slice(0, 2).toUpperCase() ?? 'EU'}
+              </div>
+              <div className="ml-3 min-w-0">
+                <p className="text-sm font-bold text-white truncate">{currentUser?.name ?? 'Usuário'}</p>
+                <p className="text-xs font-medium text-[#D8D8DE]/60">{currentUser?.role === 'admin' ? 'Admin' : 'Membro'}</p>
+              </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-bold text-white">Admin</p>
-              <p className="text-xs font-medium text-[#D8D8DE]/60">Online</p>
-            </div>
+            <button
+              onClick={handleLogout}
+              title="Sair"
+              className="p-2 text-[#D8D8DE]/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </aside>

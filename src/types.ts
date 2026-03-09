@@ -21,27 +21,35 @@ export interface Account {
   potential_value?: number;
   created_at: string;
   updated_at: string;
+  // Latest deal fields (joined from server)
+  latest_deal_stage?: string;
+  latest_deal_next_action?: string;
+  latest_deal_next_action_date?: string;
 }
 
-export type DealStage = 'Novo' | 'Qualificação' | 'Diagnóstico agendado' | 'Proposta enviada' | 'Negociação' | 'Ganhou' | 'Perdido';
+export type DealStage = string;
 
 export interface Deal {
   id: string;
   account_id: string;
   company_name?: string;
-  stage: DealStage;
+  stage: string;
   next_action: string;
   next_action_date: string;
+  loss_reason?: string;
+  loss_notes?: string;
   created_at: string;
   updated_at: string;
 }
 
 export type InvoiceStatus = 'Pendente' | 'Pago' | 'Atrasado';
+export type RevenueType = 'Implementacao' | 'Mensalidade';
 
 export interface Invoice {
   id: string;
   account_id: string;
   company_name?: string;
+  revenue_type: RevenueType;
   competence_month: string;
   due_date: string;
   amount: number;
@@ -57,6 +65,7 @@ export interface Cost {
   id: string;
   account_id?: string;
   company_name?: string;
+  name?: string;
   competence_month: string;
   category: CostCategory;
   amount: number;
