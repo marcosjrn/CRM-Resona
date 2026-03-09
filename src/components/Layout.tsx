@@ -97,7 +97,7 @@ export default function Layout() {
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-[#1a1520] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+              <div className="absolute left-0 top-full mt-2 w-80 bg-[#1a1520] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
                 <div className="px-4 py-3 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
                   <span className="text-xs font-bold text-white uppercase tracking-wider">Notificações</span>
                   {totalNotifs > 0 && <span className="text-xs font-bold text-red-400">{totalNotifs} alerta{totalNotifs !== 1 ? 's' : ''}</span>}
