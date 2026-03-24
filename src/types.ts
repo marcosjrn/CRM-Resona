@@ -81,3 +81,27 @@ export interface Activity {
   description: string;
   created_at: string;
 }
+
+export interface ProjectTask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
+export type ProjectStatus = 'Planejamento' | 'Em andamento' | 'Concluído' | 'Pausado' | 'Cancelado';
+
+export interface Project {
+  id: string;
+  account_id: string;
+  company_name?: string;
+  name: string;
+  description?: string;
+  status: ProjectStatus;
+  start_date?: string;
+  deadline?: string;
+  owner?: string;
+  tasks: ProjectTask[];
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}

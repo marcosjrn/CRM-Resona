@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Trello, DollarSign, LogOut, UserCog, BarChart2, Bell, AlertCircle, Calendar, Zap, X, CheckCheck } from 'lucide-react';
+import { LayoutDashboard, Users, Trello, DollarSign, LogOut, UserCog, BarChart2, Bell, AlertCircle, Calendar, Zap, X, CheckCheck, FolderOpen } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
@@ -95,6 +95,7 @@ export default function Layout() {
     { name: 'Clientes/Leads', path: '/accounts', icon: Users },
     { name: 'Pipeline', path: '/pipeline', icon: Trello },
     { name: 'Financeiro', path: '/finance', icon: DollarSign },
+    { name: 'Projetos', path: '/projects', icon: FolderOpen },
   ];
 
   const adminItems = [

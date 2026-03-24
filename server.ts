@@ -137,6 +137,22 @@ async function initDB() {
       changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'Planejamento',
+      start_date TEXT,
+      deadline TEXT,
+      owner TEXT,
+      tasks TEXT NOT NULL DEFAULT '[]',
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_id) REFERENCES accounts(id)
+    );
   `);
 
   // Migrations para colunas adicionadas depois do schema inicial
@@ -487,6 +503,50 @@ async function startServer() {
   app.delete("/api/costs/:id", async (req, res) => {
     try {
       await db.execute({ sql: "DELETE FROM costs WHERE id = ?", args: [req.params.id] });
+      res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erro interno" }); }
+  });
+
+  // PROJECTS
+  app.get("/api/projects", async (_req, res) => {
+    try {
+      const result = await db.execute(`
+        SELECT p.*, a.company_name
+        FROM projects p
+        JOIN accounts a ON p.account_id = a.id
+        ORDER BY p.created_at DESC
+      `);
+      res.json(toRows(result));
+    } catch (e) { res.status(500).json({ error: "Erro interno" }); }
+  });
+
+  app.post("/api/projects", async (req, res) => {
+    try {
+      const data = req.body;
+      if (!data.account_id || !data.name) return res.status(400).json({ error: "Cliente e nome são obrigatórios" });
+      const id = uuidv4();
+      await db.execute({
+        sql: "INSERT INTO projects (id, account_id, name, description, status, start_date, deadline, owner, tasks, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        args: [id, data.account_id, data.name, data.description || null, data.status || "Planejamento", data.start_date || null, data.deadline || null, data.owner || null, data.tasks || "[]", data.notes || null],
+      });
+      res.json({ id });
+    } catch (e) { res.status(500).json({ error: "Erro interno" }); }
+  });
+
+  app.put("/api/projects/:id", async (req, res) => {
+    try {
+      const data = req.body;
+      await db.execute({
+        sql: "UPDATE projects SET account_id = ?, name = ?, description = ?, status = ?, start_date = ?, deadline = ?, owner = ?, tasks = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        args: [data.account_id, data.name, data.description || null, data.status, data.start_date || null, data.deadline || null, data.owner || null, data.tasks || "[]", data.notes || null, req.params.id],
+      });
+      res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erro interno" }); }
+  });
+
+  app.delete("/api/projects/:id", async (req, res) => {
+    try {
+      await db.execute({ sql: "DELETE FROM projects WHERE id = ?", args: [req.params.id] });
       res.json({ success: true });
     } catch (e) { res.status(500).json({ error: "Erro interno" }); }
   });
