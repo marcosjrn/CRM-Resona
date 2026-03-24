@@ -192,7 +192,7 @@ export default function Projects() {
     return true;
   });
 
-  const inputClass = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-[#D8D8DE]/40 focus:outline-none focus:border-[#8151D1]/50 focus:ring-1 focus:ring-[#8151D1]/30";
+  const inputClass = "w-full bg-[#0d0b12] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-[#D8D8DE]/40 focus:outline-none focus:border-[#8151D1]/50 focus:ring-1 focus:ring-[#8151D1]/30";
   const labelClass = "block text-xs font-bold text-[#D8D8DE]/60 uppercase tracking-wider mb-1";
 
   return (
@@ -221,13 +221,13 @@ export default function Projects() {
             placeholder="Buscar projeto ou cliente..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-[#D8D8DE]/40 focus:outline-none focus:border-[#8151D1]/50"
+            className="w-full bg-[#0d0b12] border border-white/10 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-[#D8D8DE]/40 focus:outline-none focus:border-[#8151D1]/50"
           />
         </div>
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value as ProjectStatus | 'Todos')}
-          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#8151D1]/50"
+          className="bg-[#0d0b12] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#8151D1]/50"
         >
           <option value="Todos">Todos os status</option>
           {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -235,7 +235,7 @@ export default function Projects() {
         <select
           value={clientFilter}
           onChange={e => setClientFilter(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#8151D1]/50"
+          className="bg-[#0d0b12] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#8151D1]/50"
         >
           <option value="Todos">Todos os clientes</option>
           {accounts.map(a => <option key={a.id} value={a.id}>{a.company_name}</option>)}
